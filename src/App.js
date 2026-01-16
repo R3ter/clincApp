@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./styles/global.css";
 import Navigation from "./components/Navigation";
+import CompanyHeader from "./components/CompanyHeader";
 import PatientsList from "./pages/PatientsList";
 import SessionsList from "./pages/SessionsList";
 import PatientCreate from "./pages/PatientCreate";
@@ -14,6 +15,7 @@ function App() {
     <Router>
       <div className="app-wrapper">
         <Navigation />
+        <CompanyHeader />
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Navigate to="/clinic/patients" replace />} />

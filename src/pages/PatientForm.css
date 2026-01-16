@@ -90,7 +90,7 @@
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 0 0 4px rgba(65, 55, 117, 0.1);
 }
 
 .form-group input.error,
@@ -169,7 +169,7 @@
 
 .radio-label:has(input[type="radio"]:checked) {
   border-color: var(--primary-color);
-  background: rgba(13, 148, 136, 0.1);
+  background: rgba(65, 55, 117, 0.1);
 }
 
 .form-actions {

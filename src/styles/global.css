@@ -6,11 +6,11 @@
 
 :root {
   /* Medical Theme Colors */
-  --primary-color: #0d9488;
-  --primary-dark: #0f766e;
-  --primary-light: #14b8a6;
-  --secondary-color: #0891b2;
-  --accent-color: #06b6d4;
+  --primary-color: rgb(65, 55, 117);
+  --primary-dark: rgb(50, 42, 95);
+  --primary-light: rgb(85, 72, 140);
+  --secondary-color: rgb(118, 119, 119);
+  --accent-color: rgb(65, 55, 117);
   
   /* Neutral Colors */
   --bg-primary: #f0fdfa;
@@ -124,7 +124,7 @@ body {
 
 .btn-link:hover:not(:disabled) {
   color: var(--primary-dark);
-  background: rgba(13, 148, 136, 0.1);
+  background: rgba(65, 55, 117, 0.1);
   text-decoration: none;
 }
 

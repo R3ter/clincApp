@@ -3,7 +3,7 @@ export const translations = {
   en: {
     // Navigation
     nav: {
-      clinicManagement: 'Clinic Management',
+      clinicManagement: 'Basma Clinic',
       patients: 'Patients',
       sessions: 'Sessions',
     },
@@ -172,7 +172,7 @@ export const translations = {
   ar: {
     // Navigation
     nav: {
-      clinicManagement: 'إدارة العيادة',
+      clinicManagement: 'عيادة بسمة',
       patients: 'المرضى',
       sessions: 'الجلسات',
     },

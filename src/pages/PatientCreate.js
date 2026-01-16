@@ -102,8 +102,11 @@ const PatientCreate = () => {
     if (!data.diagnosis?.trim()) {
       newErrors.diagnosis = t("patient.diagnosisRequired");
     } else {
-      const otherTranslation = t('diagnosisTypes.Other', 'Other');
-      if ((data.diagnosis === "Other" || data.diagnosis === otherTranslation) && !data.diagnosisOther?.trim()) {
+      const otherTranslation = t("diagnosisTypes.Other", "Other");
+      if (
+        (data.diagnosis === "Other" || data.diagnosis === otherTranslation) &&
+        !data.diagnosisOther?.trim()
+      ) {
         newErrors.diagnosisOther = t("patient.diagnosisOtherRequired");
       }
     }
@@ -143,9 +146,12 @@ const PatientCreate = () => {
 
       // Convert diagnosis to object with en/ar translations
       const diagnosisKey = getDiagnosisKeyFromValue(data.diagnosis, t) || data.diagnosis;
-      const otherTranslation = t('diagnosisTypes.Other', 'Other');
-      const isOther = (data.diagnosis === "Other" || data.diagnosis === otherTranslation);
-      const diagnosisObject = getDiagnosisObject(diagnosisKey, isOther ? data.diagnosisOther?.trim() : '');
+      const otherTranslation = t("diagnosisTypes.Other", "Other");
+      const isOther = data.diagnosis === "Other" || data.diagnosis === otherTranslation;
+      const diagnosisObject = getDiagnosisObject(
+        diagnosisKey,
+        isOther ? data.diagnosisOther?.trim() : ""
+      );
 
       // Convert insurance to object with en/ar translations
       const insuranceObject = getInsuranceObject(data.insurance?.trim() || "");
@@ -162,7 +168,7 @@ const PatientCreate = () => {
 
       // Convert sessionType to object {en, ar}
       const sessionTypeObj = getSessionTypeObject(data.sessionType.trim());
-      
+
       const sessionData = {
         sessionType: sessionTypeObj,
         sessionDate: data.sessionDate,
@@ -265,9 +271,13 @@ const PatientCreate = () => {
               <label>{t("patient.age")}</label>
               <input
                 type="text"
-                value={age !== null 
-                  ? `${age.years} ${t("common.years")} ${age.months > 0 ? `${age.months} ${t("common.months")}` : ""}`.trim()
-                  : ""}
+                value={
+                  age !== null
+                    ? `${age.years} ${t("common.years")} ${
+                        age.months > 0 ? `${age.months} ${t("common.months")}` : ""
+                      }`.trim()
+                    : ""
+                }
                 disabled
                 className="disabled-input"
               />
@@ -310,12 +320,13 @@ const PatientCreate = () => {
             <EditableSelect
               value={data.diagnosis}
               onChange={(value) => handleChange("diagnosis", value)}
-              options={DIAGNOSIS_TYPES.map(type => t(`diagnosisTypes.${type}`, type))}
+              options={DIAGNOSIS_TYPES.map((type) => t(`diagnosisTypes.${type}`, type))}
               placeholder={t("patient.diagnosis")}
               className={errors.diagnosis ? "error" : ""}
             />
-            {(data.diagnosis === "Other" || data.diagnosis === t('diagnosisTypes.Other', 'Other')) && (
-              <div style={{ marginTop: '12px' }}>
+            {(data.diagnosis === "Other" ||
+              data.diagnosis === t("diagnosisTypes.Other", "Other")) && (
+              <div style={{ marginTop: "12px" }}>
                 <input
                   type="text"
                   id="diagnosisOther"
@@ -323,9 +334,24 @@ const PatientCreate = () => {
                   onChange={(e) => handleChange("diagnosisOther", e.target.value)}
                   placeholder={t("patient.diagnosisOther")}
                   className={errors.diagnosisOther ? "error" : ""}
-                  style={{ width: '100%', padding: '12px 16px', border: errors.diagnosisOther ? '2px solid var(--error)' : '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    border: errors.diagnosisOther
+                      ? "2px solid var(--error)"
+                      : "2px solid var(--border-color)",
+                    borderRadius: "var(--radius-md)",
+                    fontSize: "15px",
+                    fontFamily: "inherit",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                  }}
                 />
-                {errors.diagnosisOther && <span className="error-message" style={{ display: 'block', marginTop: '6px' }}>{errors.diagnosisOther}</span>}
+                {errors.diagnosisOther && (
+                  <span className="error-message" style={{ display: "block", marginTop: "6px" }}>
+                    {errors.diagnosisOther}
+                  </span>
+                )}
               </div>
             )}
             {errors.diagnosis && <span className="error-message">{errors.diagnosis}</span>}
@@ -338,7 +364,7 @@ const PatientCreate = () => {
             <EditableSelect
               value={data.insurance}
               onChange={(value) => handleChange("insurance", value)}
-              options={INSURANCE_TYPES.map(type => t(`insuranceTypes.${type}`, type))}
+              options={INSURANCE_TYPES.map((type) => t(`insuranceTypes.${type}`, type))}
               placeholder={t("patient.insurance")}
               className={errors.insurance ? "error" : ""}
             />
@@ -370,7 +396,7 @@ const PatientCreate = () => {
             <EditableSelect
               value={data.sessionType}
               onChange={(value) => handleChange("sessionType", value)}
-              options={DEFAULT_SESSION_TYPES.map(type => t(`sessionTypes.${type}`, type))}
+              options={DEFAULT_SESSION_TYPES.map((type) => t(`sessionTypes.${type}`, type))}
               placeholder={t("patient.selectOrTypeSessionType")}
               className={errors.sessionType ? "error" : ""}
             />
