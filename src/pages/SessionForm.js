@@ -5,6 +5,7 @@ import { formatDateForInput } from '../utils/dateUtils';
 import { useDraft } from '../hooks/useDraft';
 import { DraftKeys } from '../utils/draftManager';
 import { useToast } from '../hooks/useToast';
+import { useLanguage } from '../hooks/useLanguage';
 import { DEFAULT_SESSION_TYPES } from '../config/sessionTypes';
 import EditableSelect from '../components/EditableSelect';
 import DraftRestoreDialog from '../components/DraftRestoreDialog';
@@ -15,28 +16,35 @@ const SessionForm = () => {
   const { patientId, sessionId } = useParams();
   const navigate = useNavigate();
   const isEdit = !!sessionId;
+  const { t } = useLanguage();
   const { toasts, removeToast, success, error: showError } = useToast();
   
   const [initialData, setInitialData] = useState(null);
   const [loading, setLoading] = useState(isEdit);
   
-  const draftKey = isEdit
-    ? DraftKeys.SESSION_EDIT(patientId, sessionId)
-    : DraftKeys.SESSION_CREATE(patientId);
+  // Only use draft for creating new sessions, not editing
+  const draftKey = isEdit ? null : DraftKeys.SESSION_CREATE(patientId);
   
-  const {
-    data,
-    setData,
-    hasDraft,
-    showRestoreDialog,
-    restoreDraft: restoreDraftHook,
-    discardDraft: discardDraftHook,
-    clearDraftData,
-  } = useDraft(draftKey, {
+  const draftHook = useDraft(draftKey || '', {
     sessionType: '',
     sessionDate: '',
     notes: '',
   });
+  
+  // Use draft only when creating, use regular state when editing
+  const [dataState, setDataState] = useState({
+    sessionType: '',
+    sessionDate: '',
+    notes: '',
+  });
+  
+  const data = isEdit ? dataState : draftHook.data;
+  const setData = isEdit ? setDataState : draftHook.setData;
+  const hasDraft = isEdit ? false : draftHook.hasDraft;
+  const showRestoreDialog = isEdit ? false : draftHook.showRestoreDialog;
+  const restoreDraftHook = isEdit ? () => {} : draftHook.restoreDraft;
+  const discardDraftHook = isEdit ? () => {} : draftHook.discardDraft;
+  const clearDraftData = isEdit ? () => {} : draftHook.clearDraftData;
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -47,12 +55,12 @@ const SessionForm = () => {
       const session = await getSession(patientId, sessionId);
       setInitialData(session);
     } catch (err) {
-      showError('Failed to load session. Please try again.');
+      showError(t('session.failedLoad'));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [patientId, sessionId, showError]);
+  }, [patientId, sessionId, showError, t]);
 
   useEffect(() => {
     if (isEdit) {
@@ -71,17 +79,14 @@ const SessionForm = () => {
   }, [initialData, isEdit, setData]);
 
   useEffect(() => {
-    // Only load initial data if:
-    // 1. We have initial data
-    // 2. No draft exists (or draft was just discarded)
-    // 3. Form data is empty
-    if (initialData && !hasDraft && isEdit) {
+    // Load initial data when editing and form is empty
+    if (initialData && isEdit) {
       const hasData = data.sessionType || data.sessionDate;
       if (!hasData) {
         loadInitialData();
       }
     }
-  }, [initialData, hasDraft, isEdit, data.sessionType, data.sessionDate, loadInitialData]);
+  }, [initialData, isEdit, data.sessionType, data.sessionDate, loadInitialData]);
 
   const restoreDraft = () => {
     restoreDraftHook();
@@ -89,10 +94,6 @@ const SessionForm = () => {
 
   const discardDraft = () => {
     discardDraftHook();
-    // Load initial data after discarding
-    setTimeout(() => {
-      loadInitialData();
-    }, 100);
   };
 
   const handleChange = (field, value) => {
@@ -106,11 +107,11 @@ const SessionForm = () => {
     const newErrors = {};
 
     if (!data.sessionType?.trim()) {
-      newErrors.sessionType = 'Session type is required';
+      newErrors.sessionType = t('patient.sessionTypeRequired');
     }
 
     if (!data.sessionDate) {
-      newErrors.sessionDate = 'Session date is required';
+      newErrors.sessionDate = t('patient.sessionDateRequired');
     }
 
     setErrors(newErrors);
@@ -135,20 +136,19 @@ const SessionForm = () => {
 
       if (isEdit) {
         await updateSession(patientId, sessionId, sessionData);
-        success('Session updated successfully');
+        success(t('session.sessionUpdated'));
       } else {
         await createSession(patientId, sessionData);
-        success('Session created successfully');
+        success(t('session.sessionCreated'));
+        // Clear draft on success only when creating
+        clearDraftData();
       }
-      
-      // Clear draft on success
-      clearDraftData();
       
       setTimeout(() => {
         navigate(`/clinic/patients/${patientId}`);
       }, 500);
     } catch (err) {
-      showError(`Failed to ${isEdit ? 'update' : 'create'} session. Please try again.`);
+      showError(isEdit ? t('session.failedUpdate') : t('session.failedCreate'));
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -156,8 +156,9 @@ const SessionForm = () => {
   };
 
   const handleCancel = () => {
-    if (hasDraft) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+    // Only check for draft when creating, not editing
+    if (!isEdit && hasDraft) {
+      if (window.confirm(t('patient.unsavedChanges'))) {
         clearDraftData();
         navigate(`/clinic/patients/${patientId}`);
       }
@@ -169,7 +170,7 @@ const SessionForm = () => {
   if (loading) {
     return (
       <div className="session-form-container">
-        <div className="loading-spinner">Loading session...</div>
+        <div className="loading-spinner">{t('session.loadingSession')}</div>
       </div>
     );
   }
@@ -178,7 +179,7 @@ const SessionForm = () => {
     <div className="session-form-container">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       
-      {showRestoreDialog && (
+      {!isEdit && showRestoreDialog && (
         <DraftRestoreDialog
           onRestore={restoreDraft}
           onDiscard={discardDraft}
@@ -186,19 +187,19 @@ const SessionForm = () => {
       )}
 
       <div className="session-form-header">
-        <h1>{isEdit ? 'Edit Session' : 'Add Session'}</h1>
+        <h1>{isEdit ? t('session.editSession') : t('session.addSession')}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="session-form">
         <div className="form-group">
           <label htmlFor="sessionType">
-            Session Type <span className="required">*</span>
+            {t('patient.sessionType')} <span className="required">{t('common.required')}</span>
           </label>
           <EditableSelect
             value={data.sessionType}
             onChange={(value) => handleChange('sessionType', value)}
-            options={DEFAULT_SESSION_TYPES}
-            placeholder="Select or type session type..."
+            options={DEFAULT_SESSION_TYPES.map(type => t(`sessionTypes.${type}`, type))}
+            placeholder={t('patient.selectOrTypeSessionType')}
             className={errors.sessionType ? 'error' : ''}
           />
           {errors.sessionType && <span className="error-message">{errors.sessionType}</span>}
@@ -206,7 +207,7 @@ const SessionForm = () => {
 
         <div className="form-group">
           <label htmlFor="sessionDate">
-            Session Date <span className="required">*</span>
+            {t('patient.sessionDate')} <span className="required">{t('common.required')}</span>
           </label>
           <input
             type="date"
@@ -220,13 +221,13 @@ const SessionForm = () => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="notes">Notes</label>
+          <label htmlFor="notes">{t('patient.notes')}</label>
           <textarea
             id="notes"
             value={data.notes || ''}
             onChange={(e) => handleChange('notes', e.target.value)}
             rows="5"
-            placeholder="Optional session notes..."
+            placeholder={t('session.optionalSessionNotes')}
           />
         </div>
 
@@ -237,14 +238,14 @@ const SessionForm = () => {
             onClick={handleCancel}
             disabled={submitting}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
             className="btn btn-primary"
             disabled={submitting}
           >
-            {submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Session'}
+            {submitting ? t('patient.saving') : isEdit ? t('patient.saveChanges') : t('session.createSession')}
           </button>
         </div>
       </form>

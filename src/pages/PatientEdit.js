@@ -3,30 +3,33 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getPatient, updatePatient } from '../services/realtimeDbService';
 import { validateIsraeliId, formatIsraeliId, cleanIsraeliId } from '../utils/israeliIdValidation';
 import { calculateAge, formatDateForInput } from '../utils/dateUtils';
-import { useDraft } from '../hooks/useDraft';
-import { DraftKeys } from '../utils/draftManager';
 import { useToast } from '../hooks/useToast';
-import DraftRestoreDialog from '../components/DraftRestoreDialog';
+import { useLanguage } from '../hooks/useLanguage';
+import { DIAGNOSIS_TYPES } from '../config/diagnosisTypes';
+import { INSURANCE_TYPES } from '../config/insuranceTypes';
+import EditableSelect from '../components/EditableSelect';
 import ToastContainer from '../components/ToastContainer';
 import './PatientForm.css';
 
 const PatientEdit = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { toasts, removeToast, success, error: showError } = useToast();
   
   const [initialData, setInitialData] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const {
-    data,
-    setData,
-    hasDraft,
-    showRestoreDialog,
-    restoreDraft: restoreDraftHook,
-    discardDraft: discardDraftHook,
-    clearDraftData,
-  } = useDraft(DraftKeys.PATIENT_EDIT(patientId), {});
+  const [data, setData] = useState({
+    fullName: '',
+    israelId: '',
+    birthDate: '',
+    gender: '',
+    diagnosis: '',
+    diagnosisOther: '',
+    insurance: '',
+    therapyName: '',
+  });
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -38,42 +41,32 @@ const PatientEdit = () => {
 
   const loadInitialData = useCallback(() => {
     if (initialData) {
+      // Check if diagnosis is one of the predefined types
+      const diagnosisValue = initialData.diagnosis || '';
+      const isPredefinedDiagnosis = DIAGNOSIS_TYPES.includes(diagnosisValue);
+      
       setData({
         fullName: initialData.fullName || '',
         israelId: initialData.israelId || '',
         birthDate: formatDateForInput(initialData.birthDate),
         gender: initialData.gender || '',
-        diagnosis: initialData.diagnosis || '',
+        diagnosis: isPredefinedDiagnosis ? diagnosisValue : (diagnosisValue ? 'Other' : ''),
+        diagnosisOther: isPredefinedDiagnosis ? '' : diagnosisValue,
+        insurance: initialData.insurance || '',
         therapyName: initialData.therapyName || '',
-        totalSessionsPlanned: initialData.totalSessionsPlanned || '',
       });
     }
   }, [initialData, setData]);
 
   useEffect(() => {
-    // Only load initial data if:
-    // 1. We have initial data
-    // 2. No draft exists (or draft was just discarded)
-    // 3. Form data is empty
-    if (initialData && !hasDraft) {
+    // Load initial data when it's available and form is empty
+    if (initialData) {
       const hasData = data.fullName || data.israelId || data.birthDate;
       if (!hasData) {
         loadInitialData();
       }
     }
-  }, [initialData, hasDraft, data.fullName, data.israelId, data.birthDate, loadInitialData]);
-
-  const restoreDraft = () => {
-    restoreDraftHook();
-  };
-
-  const discardDraft = () => {
-    discardDraftHook();
-    // Load initial data after discarding
-    setTimeout(() => {
-      loadInitialData();
-    }, 100);
-  };
+  }, [initialData, data.fullName, data.israelId, data.birthDate, loadInitialData]);
 
   const loadPatient = async () => {
     try {
@@ -81,7 +74,7 @@ const PatientEdit = () => {
       const patient = await getPatient(patientId);
       setInitialData(patient);
     } catch (err) {
-      showError('Failed to load patient. Please try again.');
+      showError(t('patient.failedLoad'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -114,7 +107,7 @@ const PatientEdit = () => {
       // Validate after formatting
       if (formatted.length === 9) {
         if (!validateIsraeliId(formatted)) {
-          setErrors(prev => ({ ...prev, israelId: 'Invalid ID number' }));
+          setErrors(prev => ({ ...prev, israelId: t('patient.invalidIdNumber') }));
         }
       }
     }
@@ -124,34 +117,30 @@ const PatientEdit = () => {
     const newErrors = {};
 
     if (!data.fullName?.trim()) {
-      newErrors.fullName = 'Full name is required';
+      newErrors.fullName = t('patient.fullNameRequired');
     }
 
     if (!data.israelId?.trim()) {
-      newErrors.israelId = 'ID is required';
+      newErrors.israelId = t('patient.idRequired');
     } else {
       const formatted = formatIsraeliId(data.israelId);
       if (formatted.length !== 9) {
-        newErrors.israelId = 'ID must be 9 digits';
+        newErrors.israelId = t('patient.idMustBe9Digits');
       } else if (!validateIsraeliId(formatted)) {
-        newErrors.israelId = 'Invalid ID number';
+        newErrors.israelId = t('patient.invalidIdNumber');
       }
     }
 
     if (!data.birthDate) {
-      newErrors.birthDate = 'Birth date is required';
+      newErrors.birthDate = t('patient.birthDateRequired');
     }
 
     if (!data.gender) {
-      newErrors.gender = 'Gender is required';
+      newErrors.gender = t('patient.genderRequired');
     }
 
     if (!data.therapyName?.trim()) {
-      newErrors.therapyName = 'Therapy name is required';
-    }
-
-    if (!data.totalSessionsPlanned || data.totalSessionsPlanned < 1) {
-      newErrors.totalSessionsPlanned = 'Total sessions planned must be at least 1';
+      newErrors.therapyName = t('patient.therapyNameRequired');
     }
 
     setErrors(newErrors);
@@ -171,27 +160,30 @@ const PatientEdit = () => {
       // Format Israeli ID before saving
       const formattedId = formatIsraeliId(data.israelId);
       
+      // If diagnosis is "Other" (in any language), use diagnosisOther, otherwise use diagnosis
+      const otherTranslation = t('diagnosisTypes.Other', 'Other');
+      const diagnosisValue = (data.diagnosis === 'Other' || data.diagnosis === otherTranslation)
+        ? (data.diagnosisOther?.trim() || '')
+        : (data.diagnosis?.trim() || '');
+
       const updateData = {
         fullName: data.fullName.trim(),
         israelId: formattedId,
         birthDate: data.birthDate,
         gender: data.gender,
-        diagnosis: data.diagnosis?.trim() || '',
+        diagnosis: diagnosisValue,
+        insurance: data.insurance?.trim() || '',
         therapyName: data.therapyName.trim(),
-        totalSessionsPlanned: parseInt(data.totalSessionsPlanned, 10),
       };
 
       await updatePatient(patientId, updateData);
       
-      // Clear draft on success
-      clearDraftData();
-      
-      success('Patient updated successfully');
+      success(t('patient.patientUpdated'));
       setTimeout(() => {
         navigate(`/clinic/patients/${patientId}`);
       }, 500);
     } catch (err) {
-      showError('Failed to update patient. Please try again.');
+      showError(t('patient.failedUpdate'));
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -199,20 +191,13 @@ const PatientEdit = () => {
   };
 
   const handleCancel = () => {
-    if (hasDraft) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        clearDraftData();
-        navigate(`/clinic/patients/${patientId}`);
-      }
-    } else {
-      navigate(`/clinic/patients/${patientId}`);
-    }
+    navigate(`/clinic/patients/${patientId}`);
   };
 
   if (loading) {
     return (
       <div className="patient-form-container">
-        <div className="loading-spinner">Loading patient...</div>
+        <div className="loading-spinner">{t('patient.loadingPatient')}</div>
       </div>
     );
   }
@@ -220,7 +205,7 @@ const PatientEdit = () => {
   if (!initialData) {
     return (
       <div className="patient-form-container">
-        <div className="error-state">Patient not found</div>
+        <div className="error-state">{t('patient.patientNotFound')}</div>
       </div>
     );
   }
@@ -230,25 +215,18 @@ const PatientEdit = () => {
   return (
     <div className="patient-form-container">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      
-      {showRestoreDialog && (
-        <DraftRestoreDialog
-          onRestore={restoreDraft}
-          onDiscard={discardDraft}
-        />
-      )}
 
       <div className="patient-form-header">
-        <h1>Edit Patient</h1>
+        <h1>{t('patient.editPatient')}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="patient-form">
         <div className="form-section">
-          <h2>Patient Information</h2>
+          <h2>{t('patient.patientInformation')}</h2>
           
           <div className="form-group">
             <label htmlFor="fullName">
-              Full Name <span className="required">*</span>
+              {t('patient.fullName')} <span className="required">{t('common.required')}</span>
             </label>
             <input
               type="text"
@@ -262,7 +240,7 @@ const PatientEdit = () => {
 
           <div className="form-group">
             <label htmlFor="israelId">
-              ID <span className="required">*</span>
+              {t('patient.id')} <span className="required">{t('common.required')}</span>
             </label>
             <input
               type="text"
@@ -279,7 +257,7 @@ const PatientEdit = () => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="birthDate">
-                Birth Date <span className="required">*</span>
+                {t('patient.birthDate')} <span className="required">{t('common.required')}</span>
               </label>
               <input
                 type="date"
@@ -293,10 +271,12 @@ const PatientEdit = () => {
             </div>
 
             <div className="form-group">
-              <label>Age</label>
+              <label>{t('patient.age')}</label>
               <input
                 type="text"
-                value={age !== null ? `${age} years` : ''}
+                value={age !== null 
+                  ? `${age.years} ${t('common.years')} ${age.months > 0 ? `${age.months} ${t('common.months')}` : ''}`.trim()
+                  : ''}
                 disabled
                 className="disabled-input"
               />
@@ -305,7 +285,7 @@ const PatientEdit = () => {
 
           <div className="form-group">
             <label htmlFor="gender">
-              Gender <span className="required">*</span>
+              {t('patient.gender')} <span className="required">{t('common.required')}</span>
             </label>
             <div className="radio-group">
               <label className="radio-label">
@@ -316,7 +296,7 @@ const PatientEdit = () => {
                   checked={data.gender === 'male'}
                   onChange={(e) => handleChange('gender', e.target.value)}
                 />
-                <span>Male</span>
+                <span>{t('patient.male')}</span>
               </label>
               <label className="radio-label">
                 <input
@@ -326,25 +306,47 @@ const PatientEdit = () => {
                   checked={data.gender === 'female'}
                   onChange={(e) => handleChange('gender', e.target.value)}
                 />
-                <span>Female</span>
+                <span>{t('patient.female')}</span>
               </label>
             </div>
             {errors.gender && <span className="error-message">{errors.gender}</span>}
           </div>
 
           <div className="form-group">
-            <label htmlFor="diagnosis">Diagnosis</label>
-            <textarea
-              id="diagnosis"
-              value={data.diagnosis || ''}
-              onChange={(e) => handleChange('diagnosis', e.target.value)}
-              rows="3"
+            <label htmlFor="diagnosis">{t('patient.diagnosis')}</label>
+            <EditableSelect
+              value={data.diagnosis}
+              onChange={(value) => handleChange('diagnosis', value)}
+              options={DIAGNOSIS_TYPES.map(type => t(`diagnosisTypes.${type}`, type))}
+              placeholder={t('patient.diagnosis')}
+            />
+            {(data.diagnosis === 'Other' || data.diagnosis === t('diagnosisTypes.Other', 'Other')) && (
+              <div style={{ marginTop: '12px' }}>
+                <input
+                  type="text"
+                  id="diagnosisOther"
+                  value={data.diagnosisOther || ''}
+                  onChange={(e) => handleChange('diagnosisOther', e.target.value)}
+                  placeholder={t('patient.diagnosisOther')}
+                  style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="insurance">{t('patient.insurance')}</label>
+            <EditableSelect
+              value={data.insurance}
+              onChange={(value) => handleChange('insurance', value)}
+              options={INSURANCE_TYPES.map(type => t(`insuranceTypes.${type}`, type))}
+              placeholder={t('patient.insurance')}
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="therapyName">
-              Therapy Name <span className="required">*</span>
+              {t('patient.therapyName')} <span className="required">{t('common.required')}</span>
             </label>
             <input
               type="text"
@@ -355,23 +357,6 @@ const PatientEdit = () => {
             />
             {errors.therapyName && <span className="error-message">{errors.therapyName}</span>}
           </div>
-
-          <div className="form-group">
-            <label htmlFor="totalSessionsPlanned">
-              Total Sessions Planned <span className="required">*</span>
-            </label>
-            <input
-              type="number"
-              id="totalSessionsPlanned"
-              value={data.totalSessionsPlanned || ''}
-              onChange={(e) => handleChange('totalSessionsPlanned', e.target.value)}
-              min="1"
-              className={errors.totalSessionsPlanned ? 'error' : ''}
-            />
-            {errors.totalSessionsPlanned && (
-              <span className="error-message">{errors.totalSessionsPlanned}</span>
-            )}
-          </div>
         </div>
 
         <div className="form-actions">
@@ -381,14 +366,14 @@ const PatientEdit = () => {
             onClick={handleCancel}
             disabled={submitting}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
             className="btn btn-primary"
             disabled={submitting}
           >
-            {submitting ? 'Saving...' : 'Save Changes'}
+            {submitting ? t('patient.saving') : t('patient.saveChanges')}
           </button>
         </div>
       </form>

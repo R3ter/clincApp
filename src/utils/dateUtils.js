@@ -1,9 +1,9 @@
-import { format, parse, differenceInYears, isValid } from 'date-fns';
+import { format, parse, differenceInYears, differenceInMonths, isValid } from 'date-fns';
 
 /**
  * Calculate age from birth date
  * @param {string|Date|number} birthDate - Birth date (string, Date, or milliseconds timestamp)
- * @returns {number|null} - Age in years or null if invalid
+ * @returns {{years: number, months: number}|null} - Age in years and months or null if invalid
  */
 export const calculateAge = (birthDate) => {
   if (!birthDate) return null;
@@ -24,7 +24,12 @@ export const calculateAge = (birthDate) => {
     
     if (!isValid(date)) return null;
     
-    return differenceInYears(new Date(), date);
+    const today = new Date();
+    const totalMonths = differenceInMonths(today, date);
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+    
+    return { years, months };
   } catch (error) {
     return null;
   }

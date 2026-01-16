@@ -195,3 +195,18 @@ body {
   flex: 1;
   padding-top: 0;
 }
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .form-section h2::after {
+  right: 0;
+  left: auto;
+}
+
+[dir="rtl"] .nav-links {
+  flex-direction: row-reverse;
+}

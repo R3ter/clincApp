@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../hooks/useLanguage';
 import './Navigation.css';
 
 const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t, language, changeLanguage } = useLanguage();
 
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -21,7 +23,7 @@ const Navigation = () => {
               <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span className="nav-brand-text">Clinic Management</span>
+          <span className="nav-brand-text">{t('nav.clinicManagement')}</span>
         </div>
         
         <div className="nav-links">
@@ -35,8 +37,23 @@ const Navigation = () => {
               <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1574 16.5523C21.6104 15.8519 20.8442 15.3516 20 15.13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span>Patients</span>
+            <span>{t('nav.patients')}</span>
           </button>
+          
+          <div className="language-switcher">
+            <button
+              className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+              onClick={() => changeLanguage('en')}
+            >
+              EN
+            </button>
+            <button
+              className={`lang-btn ${language === 'ar' ? 'active' : ''}`}
+              onClick={() => changeLanguage('ar')}
+            >
+              عربي
+            </button>
+          </div>
         </div>
       </div>
     </nav>

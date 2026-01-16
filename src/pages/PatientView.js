@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getPatient, listSessions } from '../services/realtimeDbService';
 import { formatDate, calculateAge } from '../utils/dateUtils';
 import { useToast } from '../hooks/useToast';
+import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
 import './PatientView.css';
 
 const PatientView = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [patient, setPatient] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,12 +26,12 @@ const PatientView = () => {
       setPatient(patientData);
       setSessions(sessionsData);
     } catch (err) {
-      showError('Failed to load patient data. Please try again.');
+      showError(t('patientView.failedLoadData'));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [patientId, showError]);
+  }, [patientId, showError, t]);
 
   useEffect(() => {
     loadPatientData();
@@ -50,7 +52,7 @@ const PatientView = () => {
   if (loading) {
     return (
       <div className="patient-view-container">
-        <div className="loading-spinner">Loading patient data...</div>
+        <div className="loading-spinner">{t('patientView.loadingPatientData')}</div>
       </div>
     );
   }
@@ -58,7 +60,7 @@ const PatientView = () => {
   if (!patient) {
     return (
       <div className="patient-view-container">
-        <div className="error-state">Patient not found</div>
+        <div className="error-state">{t('patient.patientNotFound')}</div>
       </div>
     );
   }
@@ -75,7 +77,7 @@ const PatientView = () => {
             className="btn btn-link"
             onClick={() => navigate('/clinic/patients')}
           >
-            ← Back to Patients
+            {t('patientView.backToPatients')}
           </button>
           <h1>{patient.fullName}</h1>
         </div>
@@ -83,67 +85,69 @@ const PatientView = () => {
           className="btn btn-primary"
           onClick={handleEditPatient}
         >
-          Edit Patient
+          {t('patientView.editPatient')}
         </button>
       </div>
 
       <div className="patient-summary-card">
-        <h2>Patient Information</h2>
+        <h2>{t('patient.patientInformation')}</h2>
         <div className="summary-grid">
           <div className="summary-item">
-            <label>Full Name</label>
+            <label>{t('patient.fullName')}</label>
             <div>{patient.fullName}</div>
           </div>
           <div className="summary-item">
-            <label>ID</label>
+            <label>{t('patient.id')}</label>
             <div>{patient.israelId}</div>
           </div>
           <div className="summary-item">
-            <label>Gender</label>
-            <div>{patient.gender || '-'}</div>
+            <label>{t('patient.gender')}</label>
+            <div>{patient.gender === 'male' ? t('patient.male') : patient.gender === 'female' ? t('patient.female') : '-'}</div>
           </div>
           <div className="summary-item">
-            <label>Age</label>
-            <div>{age !== null ? `${age} years` : '-'}</div>
+            <label>{t('patient.age')}</label>
+            <div>{age !== null 
+              ? `${age.years} ${t('common.years')} ${age.months > 0 ? `${age.months} ${t('common.months')}` : ''}`.trim()
+              : '-'}</div>
           </div>
           <div className="summary-item">
-            <label>Birth Date</label>
+            <label>{t('patient.birthDate')}</label>
             <div>{formatDate(patient.birthDate)}</div>
           </div>
           <div className="summary-item">
-            <label>Diagnosis</label>
+            <label>{t('patient.diagnosis')}</label>
             <div>{patient.diagnosis || '-'}</div>
           </div>
           <div className="summary-item">
-            <label>Therapy Name</label>
-            <div>{patient.therapyName || '-'}</div>
+            <label>{t('patient.insurance')}</label>
+            <div>{patient.insurance || '-'}</div>
           </div>
           <div className="summary-item">
-            <label>Total Sessions Planned</label>
-            <div>{patient.totalSessionsPlanned || 0}</div>
+            <label>{t('patient.therapyName')}</label>
+            <div>{patient.therapyName || '-'}</div>
           </div>
         </div>
       </div>
 
       <div className="sessions-section">
         <div className="sessions-header">
-          <h2>Sessions</h2>
+          <h2>{t('patientView.sessions')}</h2>
           <button
             className="btn btn-primary"
             onClick={handleAddSession}
           >
-            Add Session
+            {t('patientView.addSession')}
           </button>
         </div>
 
         {sessions.length === 0 ? (
           <div className="empty-state">
-            <p>No sessions yet.</p>
+            <p>{t('patientView.noSessions')}</p>
             <button
               className="btn btn-primary"
               onClick={handleAddSession}
             >
-              Add Session
+              {t('patientView.addSession')}
             </button>
           </div>
         ) : (
@@ -151,10 +155,10 @@ const PatientView = () => {
             <table className="sessions-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
+                  <th>{t('patientView.date')}</th>
+                  <th>{t('patientView.type')}</th>
+                  <th>{t('patient.notes')}</th>
+                  <th>{t('patientView.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +178,7 @@ const PatientView = () => {
                         className="btn btn-link"
                         onClick={() => handleEditSession(session.id)}
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                     </td>
                   </tr>

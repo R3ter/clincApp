@@ -74,3 +74,9 @@
   border-bottom-left-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
 }
+
+/* RTL Support */
+[dir="rtl"] .editable-select-dropdown {
+  left: auto;
+  right: 0;
+}
