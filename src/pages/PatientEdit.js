@@ -7,6 +7,8 @@ import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import { DIAGNOSIS_TYPES } from '../config/diagnosisTypes';
 import { INSURANCE_TYPES } from '../config/insuranceTypes';
+import { getDiagnosisObject, getDiagnosisKeyFromValue, getDiagnosisKeyFromObject } from '../utils/diagnosisUtils';
+import { getInsuranceObject, getInsuranceKeyFromObject } from '../utils/insuranceUtils';
 import EditableSelect from '../components/EditableSelect';
 import ToastContainer from '../components/ToastContainer';
 import './PatientForm.css';
@@ -41,22 +43,21 @@ const PatientEdit = () => {
 
   const loadInitialData = useCallback(() => {
     if (initialData) {
-      // Check if diagnosis is one of the predefined types
-      const diagnosisValue = initialData.diagnosis || '';
-      const isPredefinedDiagnosis = DIAGNOSIS_TYPES.includes(diagnosisValue);
+      // Handle diagnosis - could be object {en, ar} or string (for backward compatibility)
+      const { key, customText } = getDiagnosisKeyFromObject(initialData.diagnosis, t);
       
       setData({
         fullName: initialData.fullName || '',
         israelId: initialData.israelId || '',
         birthDate: formatDateForInput(initialData.birthDate),
         gender: initialData.gender || '',
-        diagnosis: isPredefinedDiagnosis ? diagnosisValue : (diagnosisValue ? 'Other' : ''),
-        diagnosisOther: isPredefinedDiagnosis ? '' : diagnosisValue,
-        insurance: initialData.insurance || '',
+        diagnosis: key,
+        diagnosisOther: customText,
+        insurance: getInsuranceKeyFromObject(initialData.insurance, t) || '',
         therapyName: initialData.therapyName || '',
       });
     }
-  }, [initialData, setData]);
+  }, [initialData, setData, t]);
 
   useEffect(() => {
     // Load initial data when it's available and form is empty
@@ -139,6 +140,10 @@ const PatientEdit = () => {
       newErrors.gender = t('patient.genderRequired');
     }
 
+    if (!data.insurance?.trim()) {
+      newErrors.insurance = t('patient.insuranceRequired');
+    }
+
     if (!data.therapyName?.trim()) {
       newErrors.therapyName = t('patient.therapyNameRequired');
     }
@@ -160,19 +165,22 @@ const PatientEdit = () => {
       // Format Israeli ID before saving
       const formattedId = formatIsraeliId(data.israelId);
       
-      // If diagnosis is "Other" (in any language), use diagnosisOther, otherwise use diagnosis
+      // Convert diagnosis to object with en/ar translations
+      const diagnosisKey = getDiagnosisKeyFromValue(data.diagnosis, t) || data.diagnosis;
       const otherTranslation = t('diagnosisTypes.Other', 'Other');
-      const diagnosisValue = (data.diagnosis === 'Other' || data.diagnosis === otherTranslation)
-        ? (data.diagnosisOther?.trim() || '')
-        : (data.diagnosis?.trim() || '');
+      const isOther = (data.diagnosis === 'Other' || data.diagnosis === otherTranslation);
+      const diagnosisObject = getDiagnosisObject(diagnosisKey, isOther ? data.diagnosisOther?.trim() : '');
+
+      // Convert insurance to object with en/ar translations
+      const insuranceObject = getInsuranceObject(data.insurance?.trim() || '');
 
       const updateData = {
         fullName: data.fullName.trim(),
         israelId: formattedId,
         birthDate: data.birthDate,
         gender: data.gender,
-        diagnosis: diagnosisValue,
-        insurance: data.insurance?.trim() || '',
+        diagnosis: diagnosisObject,
+        insurance: insuranceObject,
         therapyName: data.therapyName.trim(),
       };
 
@@ -313,12 +321,15 @@ const PatientEdit = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="diagnosis">{t('patient.diagnosis')}</label>
+            <label htmlFor="diagnosis">
+              {t('patient.diagnosis')} <span className="required">{t('common.required')}</span>
+            </label>
             <EditableSelect
               value={data.diagnosis}
               onChange={(value) => handleChange('diagnosis', value)}
               options={DIAGNOSIS_TYPES.map(type => t(`diagnosisTypes.${type}`, type))}
               placeholder={t('patient.diagnosis')}
+              className={errors.diagnosis ? 'error' : ''}
             />
             {(data.diagnosis === 'Other' || data.diagnosis === t('diagnosisTypes.Other', 'Other')) && (
               <div style={{ marginTop: '12px' }}>
@@ -328,20 +339,27 @@ const PatientEdit = () => {
                   value={data.diagnosisOther || ''}
                   onChange={(e) => handleChange('diagnosisOther', e.target.value)}
                   placeholder={t('patient.diagnosisOther')}
-                  style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                  className={errors.diagnosisOther ? 'error' : ''}
+                  style={{ width: '100%', padding: '12px 16px', border: errors.diagnosisOther ? '2px solid var(--error)' : '2px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                 />
+                {errors.diagnosisOther && <span className="error-message" style={{ display: 'block', marginTop: '6px' }}>{errors.diagnosisOther}</span>}
               </div>
             )}
+            {errors.diagnosis && <span className="error-message">{errors.diagnosis}</span>}
           </div>
 
           <div className="form-group">
-            <label htmlFor="insurance">{t('patient.insurance')}</label>
+            <label htmlFor="insurance">
+              {t('patient.insurance')} <span className="required">{t('common.required')}</span>
+            </label>
             <EditableSelect
               value={data.insurance}
               onChange={(value) => handleChange('insurance', value)}
               options={INSURANCE_TYPES.map(type => t(`insuranceTypes.${type}`, type))}
               placeholder={t('patient.insurance')}
+              className={errors.insurance ? 'error' : ''}
             />
+            {errors.insurance && <span className="error-message">{errors.insurance}</span>}
           </div>
 
           <div className="form-group">

@@ -1,4 +1,4 @@
-import { ref, get, set, update, push } from "firebase/database";
+import { ref, get, set, update, push, remove } from "firebase/database";
 import { db } from "../config/firebase";
 
 const PATIENTS_PATH = "patients";
@@ -182,6 +182,61 @@ export const listSessions = async (patientId) => {
 };
 
 /**
+ * List all sessions across all patients
+ * @returns {Promise<Array>} - Array of session objects with patientId and patient info
+ */
+export const listAllSessions = async () => {
+  try {
+    const patientsRef = ref(db, PATIENTS_PATH);
+    const snapshot = await get(patientsRef);
+
+    if (!snapshot.exists()) {
+      return [];
+    }
+
+    const patientsData = snapshot.val();
+    const allSessions = [];
+
+    // Loop through all patients and get their sessions
+    for (const patientId of Object.keys(patientsData)) {
+      try {
+        const patient = patientsData[patientId];
+        const sessionsRef = ref(db, `${PATIENTS_PATH}/${patientId}/${SESSIONS_PATH}`);
+        const sessionsSnapshot = await get(sessionsRef);
+
+        if (sessionsSnapshot.exists()) {
+          const sessionsData = sessionsSnapshot.val();
+          Object.keys(sessionsData).forEach((sessionId) => {
+            allSessions.push({
+              id: sessionId,
+              patientId,
+              patientName: patient.fullName || '',
+              patientIsraelId: patient.israelId || '',
+              ...sessionsData[sessionId],
+            });
+          });
+        }
+      } catch (error) {
+        console.error(`Error loading sessions for patient ${patientId}:`, error);
+        // Continue with other patients
+      }
+    }
+
+    // Sort by sessionDate (descending)
+    allSessions.sort((a, b) => {
+      const aTime = a.sessionDate || 0;
+      const bTime = b.sessionDate || 0;
+      return bTime - aTime;
+    });
+
+    return allSessions;
+  } catch (error) {
+    console.error("Error listing all sessions:", error);
+    throw error;
+  }
+};
+
+/**
  * Create a new session for a patient
  * @param {string} patientId - Patient ID
  * @param {object} sessionData - Session data
@@ -259,6 +314,37 @@ export const getSession = async (patientId, sessionId) => {
     };
   } catch (error) {
     console.error("Error getting session:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a patient (and all their sessions)
+ * @param {string} patientId - Patient ID
+ * @returns {Promise<void>}
+ */
+export const deletePatient = async (patientId) => {
+  try {
+    const patientRef = ref(db, `${PATIENTS_PATH}/${patientId}`);
+    await remove(patientRef);
+  } catch (error) {
+    console.error("Error deleting patient:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a session
+ * @param {string} patientId - Patient ID
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<void>}
+ */
+export const deleteSession = async (patientId, sessionId) => {
+  try {
+    const sessionRef = ref(db, `${PATIENTS_PATH}/${patientId}/${SESSIONS_PATH}/${sessionId}`);
+    await remove(sessionRef);
+  } catch (error) {
+    console.error("Error deleting session:", error);
     throw error;
   }
 };

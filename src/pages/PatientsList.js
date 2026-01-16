@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listPatients, listSessions } from '../services/realtimeDbService';
+import { listPatients, listSessions, deletePatient } from '../services/realtimeDbService';
 import { formatDate, calculateAge } from '../utils/dateUtils';
+import { getDiagnosisDisplayText } from '../utils/diagnosisUtils';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
@@ -13,8 +14,8 @@ const PatientsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPatients, setFilteredPatients] = useState([]);
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { toasts, removeToast, error: showError } = useToast();
+  const { t, language } = useLanguage();
+  const { toasts, removeToast, success, error: showError } = useToast();
 
   const loadPatients = useCallback(async () => {
     try {
@@ -75,6 +76,21 @@ const PatientsList = () => {
 
   const handleEdit = (patientId) => {
     navigate(`/clinic/patients/${patientId}/edit`);
+  };
+
+  const handleDelete = async (patientId, patientName) => {
+    const confirmMessage = `${t('patientView.confirmDeletePatient')}\n${t('common.thisActionCannotBeUndone')}`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deletePatient(patientId);
+        success(t('patient.patientDeleted'));
+        // Reload patients list
+        loadPatients();
+      } catch (err) {
+        showError(t('patient.failedDelete'));
+        console.error(err);
+      }
+    }
   };
 
   if (loading) {
@@ -150,11 +166,14 @@ const PatientsList = () => {
                       : '-'}</td>
                     <td>{formatDate(patient.birthDate)}</td>
                     <td className="diagnosis-cell">
-                      {patient.diagnosis ? (
-                        patient.diagnosis.length > 30
-                          ? `${patient.diagnosis.substring(0, 30)}...`
-                          : patient.diagnosis
-                      ) : '-'}
+                      {(() => {
+                        const diagnosisText = getDiagnosisDisplayText(patient.diagnosis, language);
+                        return diagnosisText ? (
+                          diagnosisText.length > 30
+                            ? `${diagnosisText.substring(0, 30)}...`
+                            : diagnosisText
+                        ) : '-';
+                      })()}
                     </td>
                     <td>{patient.therapyName || '-'}</td>
                     <td>{patient.sessionCount || 0}</td>
@@ -171,6 +190,13 @@ const PatientsList = () => {
                           onClick={() => handleEdit(patient.id)}
                         >
                           {t('common.edit')}
+                        </button>
+                        <button
+                          className="btn btn-link"
+                          onClick={() => handleDelete(patient.id, patient.fullName)}
+                          style={{ color: 'var(--error)' }}
+                        >
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>

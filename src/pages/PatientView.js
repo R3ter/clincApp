@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPatient, listSessions } from '../services/realtimeDbService';
+import { getPatient, listSessions, deletePatient, deleteSession } from '../services/realtimeDbService';
 import { formatDate, calculateAge } from '../utils/dateUtils';
+import { getDiagnosisDisplayText } from '../utils/diagnosisUtils';
+import { getSessionTypeDisplayText } from '../utils/sessionTypesUtils';
+import { getInsuranceDisplayText } from '../utils/insuranceUtils';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
@@ -10,11 +13,11 @@ import './PatientView.css';
 const PatientView = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [patient, setPatient] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { toasts, removeToast, error: showError } = useToast();
+  const { toasts, removeToast, success, error: showError } = useToast();
 
   const loadPatientData = useCallback(async () => {
     try {
@@ -49,6 +52,38 @@ const PatientView = () => {
     navigate(`/clinic/patients/${patientId}/sessions/${sessionId}/edit`);
   };
 
+  const handleDeletePatient = async () => {
+    const confirmMessage = `${t('patientView.confirmDeletePatient')}\n${t('common.thisActionCannotBeUndone')}`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deletePatient(patientId);
+        success(t('patient.patientDeleted'));
+        setTimeout(() => {
+          navigate('/clinic/patients');
+        }, 500);
+      } catch (err) {
+        showError(t('patient.failedDelete'));
+        console.error(err);
+      }
+    }
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    const confirmMessage = `${t('patientView.confirmDeleteSession')}\n${t('common.thisActionCannotBeUndone')}`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deleteSession(patientId, sessionId);
+        success(t('session.sessionDeleted'));
+        // Reload sessions
+        const updatedSessions = await listSessions(patientId);
+        setSessions(updatedSessions);
+      } catch (err) {
+        showError(t('session.failedDelete'));
+        console.error(err);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="patient-view-container">
@@ -81,12 +116,21 @@ const PatientView = () => {
           </button>
           <h1>{patient.fullName}</h1>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={handleEditPatient}
-        >
-          {t('patientView.editPatient')}
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleEditPatient}
+          >
+            {t('patientView.editPatient')}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleDeletePatient}
+            style={{ backgroundColor: 'var(--error)', color: 'white', border: 'none' }}
+          >
+            {t('common.delete')}
+          </button>
+        </div>
       </div>
 
       <div className="patient-summary-card">
@@ -116,11 +160,11 @@ const PatientView = () => {
           </div>
           <div className="summary-item">
             <label>{t('patient.diagnosis')}</label>
-            <div>{patient.diagnosis || '-'}</div>
+            <div>{getDiagnosisDisplayText(patient.diagnosis, language) || '-'}</div>
           </div>
           <div className="summary-item">
             <label>{t('patient.insurance')}</label>
-            <div>{patient.insurance || '-'}</div>
+            <div>{getInsuranceDisplayText(patient.insurance, language) || '-'}</div>
           </div>
           <div className="summary-item">
             <label>{t('patient.therapyName')}</label>
@@ -165,7 +209,7 @@ const PatientView = () => {
                 {sessions.map(session => (
                   <tr key={session.id}>
                     <td>{formatDate(session.sessionDate)}</td>
-                    <td>{session.sessionType || '-'}</td>
+                    <td>{getSessionTypeDisplayText(session.sessionType, language) || '-'}</td>
                     <td className="notes-cell">
                       {session.notes ? (
                         session.notes.length > 50
@@ -174,12 +218,21 @@ const PatientView = () => {
                       ) : '-'}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-link"
-                        onClick={() => handleEditSession(session.id)}
-                      >
-                        {t('common.edit')}
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="btn btn-link"
+                          onClick={() => handleEditSession(session.id)}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          className="btn btn-link"
+                          onClick={() => handleDeleteSession(session.id)}
+                          style={{ color: 'var(--error)' }}
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

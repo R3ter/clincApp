@@ -7,6 +7,7 @@ import { DraftKeys } from '../utils/draftManager';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import { DEFAULT_SESSION_TYPES } from '../config/sessionTypes';
+import { getSessionTypeObject, getSessionTypeKeyFromObject } from '../utils/sessionTypesUtils';
 import EditableSelect from '../components/EditableSelect';
 import DraftRestoreDialog from '../components/DraftRestoreDialog';
 import ToastContainer from '../components/ToastContainer';
@@ -70,13 +71,15 @@ const SessionForm = () => {
 
   const loadInitialData = useCallback(() => {
     if (initialData && isEdit) {
+      // Convert sessionType object to display text for the form
+      const sessionTypeDisplay = getSessionTypeKeyFromObject(initialData.sessionType, t);
       setData({
-        sessionType: initialData.sessionType || '',
+        sessionType: sessionTypeDisplay || '',
         sessionDate: formatDateForInput(initialData.sessionDate),
         notes: initialData.notes || '',
       });
     }
-  }, [initialData, isEdit, setData]);
+  }, [initialData, isEdit, setData, t]);
 
   useEffect(() => {
     // Load initial data when editing and form is empty
@@ -128,8 +131,11 @@ const SessionForm = () => {
     setSubmitting(true);
 
     try {
+      // Convert sessionType to object {en, ar}
+      const sessionTypeObj = getSessionTypeObject(data.sessionType.trim());
+      
       const sessionData = {
-        sessionType: data.sessionType.trim(),
+        sessionType: sessionTypeObj,
         sessionDate: data.sessionDate,
         notes: data.notes?.trim() || '',
       };
