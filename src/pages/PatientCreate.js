@@ -11,7 +11,7 @@ import { DEFAULT_SESSION_TYPES } from "../config/sessionTypes";
 import { DIAGNOSIS_TYPES } from "../config/diagnosisTypes";
 import { INSURANCE_TYPES } from "../config/insuranceTypes";
 import { getDiagnosisObject, getDiagnosisKeyFromValue } from "../utils/diagnosisUtils";
-import { getInsuranceObject, getInsuranceKeyFromObject } from "../utils/insuranceUtils";
+import { getInsuranceObject } from "../utils/insuranceUtils";
 import { getSessionTypeObject } from "../utils/sessionTypesUtils";
 import EditableSelect from "../components/EditableSelect";
 import DraftRestoreDialog from "../components/DraftRestoreDialog";
