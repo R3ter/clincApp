@@ -8,7 +8,6 @@ import ToastContainer from '../components/ToastContainer';
 import './PatientsList.css';
 
 const PatientsList = () => {
-  const [patients, setPatients] = useState([]);
   const [patientsWithSessionCounts, setPatientsWithSessionCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +20,6 @@ const PatientsList = () => {
     try {
       setLoading(true);
       const data = await listPatients({ searchTerm: '', limitCount: 100 });
-      setPatients(data);
       
       // Fetch session counts for all patients
       const patientsWithCounts = await Promise.all(

@@ -1,4 +1,4 @@
-import { format, parse, differenceInYears, differenceInMonths, isValid } from 'date-fns';
+import { format, parse, differenceInMonths, isValid } from 'date-fns';
 
 /**
  * Calculate age from birth date
