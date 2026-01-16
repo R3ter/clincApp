@@ -1,0 +1,76 @@
+.editable-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.editable-select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.editable-select-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+}
+
+.editable-select-input:disabled {
+  background: var(--bg-tertiary);
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
+.editable-select-input.error {
+  border-color: var(--error);
+}
+
+.editable-select-input.error:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.editable-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 6px;
+}
+
+.editable-select-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.editable-select-option:hover {
+  background: var(--bg-primary);
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.editable-select-option:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+.editable-select-option:last-child {
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}

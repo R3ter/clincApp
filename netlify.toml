@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+
+# Configure secrets scanning
+# Firebase client-side configuration keys are expected in build output
+# These are public client-side keys, not server-side secrets
+[build.environment]
+  # Omit Firebase client-side keys from secrets scanning
+  # These keys are intentionally bundled into React apps (this is normal for Firebase)
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_FIREBASE_API_KEY,REACT_APP_FIREBASE_AUTH_DOMAIN,REACT_APP_FIREBASE_DATABASE_URL,REACT_APP_FIREBASE_PROJECT_ID,REACT_APP_FIREBASE_STORAGE_BUCKET,REACT_APP_FIREBASE_MESSAGING_SENDER_ID,REACT_APP_FIREBASE_APP_ID"
+  
+  # Omit documentation files from secrets scanning (they may contain example values)
+  SECRETS_SCAN_OMIT_PATHS = "*.md"
