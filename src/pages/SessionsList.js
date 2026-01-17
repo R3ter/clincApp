@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listAllSessions, deleteSession } from '../services/realtimeDbService';
+import { subscribeAllSessions, deleteSession } from '../services/realtimeDbService';
 import { formatDate } from '../utils/dateUtils';
 import { getSessionTypeDisplayText } from '../utils/sessionTypesUtils';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
+import TableSkeleton from '../components/TableSkeleton';
 import './SessionsList.css';
 
 const SessionsList = () => {
@@ -17,23 +18,21 @@ const SessionsList = () => {
   const { t, language } = useLanguage();
   const { toasts, removeToast, success, error: showError } = useToast();
 
-  const loadSessions = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await listAllSessions();
+  useEffect(() => {
+    setLoading(true);
+    
+    // Subscribe to real-time session updates
+    const unsubscribe = subscribeAllSessions((data) => {
       setSessions(data);
       setFilteredSessions(data);
-    } catch (err) {
-      showError(t('sessionsList.failedLoad'));
-      console.error(err);
-    } finally {
       setLoading(false);
-    }
-  }, [showError, t]);
+    });
 
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (searchTerm) {
@@ -72,8 +71,7 @@ const SessionsList = () => {
       try {
         await deleteSession(patientId, sessionId);
         success(t('session.sessionDeleted'));
-        // Reload sessions
-        loadSessions();
+        // No need to reload - real-time listener will update automatically
       } catch (err) {
         showError(t('session.failedDelete'));
         console.error(err);
@@ -84,7 +82,10 @@ const SessionsList = () => {
   if (loading) {
     return (
       <div className="sessions-list-container">
-        <div className="loading-spinner">{t('sessionsList.loadingSessions')}</div>
+        <div className="sessions-list-header">
+          <h1>{t('sessionsList.sessions')}</h1>
+        </div>
+        <TableSkeleton rows={8} columns={5} />
       </div>
     );
   }

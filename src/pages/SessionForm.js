@@ -11,6 +11,7 @@ import { getSessionTypeObject, getSessionTypeKeyFromObject } from '../utils/sess
 import EditableSelect from '../components/EditableSelect';
 import DraftRestoreDialog from '../components/DraftRestoreDialog';
 import ToastContainer from '../components/ToastContainer';
+import LoadingSpinner from '../components/LoadingSpinner';
 import './SessionForm.css';
 
 const SessionForm = () => {
@@ -176,7 +177,7 @@ const SessionForm = () => {
   if (loading) {
     return (
       <div className="session-form-container">
-        <div className="loading-spinner">{t('session.loadingSession')}</div>
+        <LoadingSpinner message={t('session.loadingSession')} size="large" />
       </div>
     );
   }

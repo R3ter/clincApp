@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listPatients, listSessions, deletePatient } from '../services/realtimeDbService';
+import { subscribePatients, deletePatient } from '../services/realtimeDbService';
 import { formatDate, calculateAge } from '../utils/dateUtils';
 import { getDiagnosisDisplayText } from '../utils/diagnosisUtils';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
+import TableSkeleton from '../components/TableSkeleton';
 import './PatientsList.css';
 
 const PatientsList = () => {
@@ -17,43 +18,24 @@ const PatientsList = () => {
   const { t, language } = useLanguage();
   const { toasts, removeToast, success, error: showError } = useToast();
 
-  const loadPatients = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await listPatients({ searchTerm: '', limitCount: 100 });
-      
-      // Fetch session counts for all patients
-      const patientsWithCounts = await Promise.all(
-        data.map(async (patient) => {
-          try {
-            const sessions = await listSessions(patient.id);
-            return {
-              ...patient,
-              sessionCount: sessions.length,
-            };
-          } catch (err) {
-            console.error(`Error loading sessions for patient ${patient.id}:`, err);
-            return {
-              ...patient,
-              sessionCount: 0,
-            };
-          }
-        })
-      );
-      
-      setPatientsWithSessionCounts(patientsWithCounts);
-      setFilteredPatients(patientsWithCounts);
-    } catch (err) {
-      showError(t('patientsList.failedLoad'));
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [showError, t]);
-
   useEffect(() => {
-    loadPatients();
-  }, [loadPatients]);
+    setLoading(true);
+    
+    // Subscribe to real-time patient updates
+    const unsubscribe = subscribePatients(
+      (patients) => {
+        setPatientsWithSessionCounts(patients);
+        setFilteredPatients(patients);
+        setLoading(false);
+      },
+      { searchTerm: '', limitCount: 100 }
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (searchTerm) {
@@ -84,8 +66,7 @@ const PatientsList = () => {
       try {
         await deletePatient(patientId);
         success(t('patient.patientDeleted'));
-        // Reload patients list
-        loadPatients();
+        // No need to reload - real-time listener will update automatically
       } catch (err) {
         showError(t('patient.failedDelete'));
         console.error(err);
@@ -96,7 +77,10 @@ const PatientsList = () => {
   if (loading) {
     return (
       <div className="patients-list-container">
-        <div className="loading-spinner">{t('patientsList.loadingPatients')}</div>
+        <div className="patients-list-header">
+          <h1>{t('patientsList.patients')}</h1>
+        </div>
+        <TableSkeleton rows={8} columns={9} />
       </div>
     );
   }

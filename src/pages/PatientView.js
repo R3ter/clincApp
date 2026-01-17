@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPatient, listSessions, deletePatient, deleteSession } from '../services/realtimeDbService';
+import { getPatient, subscribeSessions, deletePatient, deleteSession } from '../services/realtimeDbService';
 import { formatDate, calculateAge } from '../utils/dateUtils';
 import { getDiagnosisDisplayText } from '../utils/diagnosisUtils';
 import { getSessionTypeDisplayText } from '../utils/sessionTypesUtils';
@@ -8,6 +8,7 @@ import { getInsuranceDisplayText } from '../utils/insuranceUtils';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import ToastContainer from '../components/ToastContainer';
+import LoadingSpinner from '../components/LoadingSpinner';
 import './PatientView.css';
 
 const PatientView = () => {
@@ -19,26 +20,37 @@ const PatientView = () => {
   const [loading, setLoading] = useState(true);
   const { toasts, removeToast, success, error: showError } = useToast();
 
-  const loadPatientData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [patientData, sessionsData] = await Promise.all([
-        getPatient(patientId),
-        listSessions(patientId),
-      ]);
-      setPatient(patientData);
-      setSessions(sessionsData);
-    } catch (err) {
-      showError(t('patientView.failedLoadData'));
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // Load patient data (one-time)
+  useEffect(() => {
+    const loadPatient = async () => {
+      try {
+        setLoading(true);
+        const patientData = await getPatient(patientId);
+        setPatient(patientData);
+      } catch (err) {
+        showError(t('patientView.failedLoadData'));
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadPatient();
   }, [patientId, showError, t]);
 
+  // Subscribe to real-time session updates
   useEffect(() => {
-    loadPatientData();
-  }, [loadPatientData]);
+    if (!patientId) return;
+    
+    const unsubscribe = subscribeSessions(patientId, (sessionsData) => {
+      setSessions(sessionsData);
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [patientId]);
 
   const handleEditPatient = () => {
     navigate(`/clinic/patients/${patientId}/edit`);
@@ -74,9 +86,7 @@ const PatientView = () => {
       try {
         await deleteSession(patientId, sessionId);
         success(t('session.sessionDeleted'));
-        // Reload sessions
-        const updatedSessions = await listSessions(patientId);
-        setSessions(updatedSessions);
+        // No need to reload - real-time listener will update automatically
       } catch (err) {
         showError(t('session.failedDelete'));
         console.error(err);
@@ -87,7 +97,7 @@ const PatientView = () => {
   if (loading) {
     return (
       <div className="patient-view-container">
-        <div className="loading-spinner">{t('patientView.loadingPatientData')}</div>
+        <LoadingSpinner message={t('patientView.loadingPatientData')} size="large" />
       </div>
     );
   }

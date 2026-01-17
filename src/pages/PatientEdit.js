@@ -11,6 +11,7 @@ import { getDiagnosisObject, getDiagnosisKeyFromValue, getDiagnosisKeyFromObject
 import { getInsuranceObject, getInsuranceKeyFromObject } from '../utils/insuranceUtils';
 import EditableSelect from '../components/EditableSelect';
 import ToastContainer from '../components/ToastContainer';
+import LoadingSpinner from '../components/LoadingSpinner';
 import './PatientForm.css';
 
 const PatientEdit = () => {
@@ -205,7 +206,7 @@ const PatientEdit = () => {
   if (loading) {
     return (
       <div className="patient-form-container">
-        <div className="loading-spinner">{t('patient.loadingPatient')}</div>
+        <LoadingSpinner message={t('patient.loadingPatient')} size="large" />
       </div>
     );
   }
